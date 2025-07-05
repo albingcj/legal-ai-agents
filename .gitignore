@@ -1,0 +1,52 @@
+# Python-related
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Dependencies
+*.egg-info/
+dist/
+build/
+develop-eggs/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+wheels/
+pip-wheel-metadata/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data directories (if large or sensitive)
+/data/
+/chroma_db/
+
+# UI and assets (if not needed in version control)
+/ui/
+
+# Environment files
+.env
+
+# Logs and cache
+logs/
+cache/
+temp/
+
+# Testing artifacts
+__pycache__
+.pytest_cache/
+coverage/
+htmlcov/

@@ -1,0 +1,30 @@
+# Core ML libraries
+sentence-transformers
+chromadb
+numpy
+pandas
+
+# LangChain ecosystem
+langchain
+langchain-community
+langgraph
+langsmith
+
+# API and HTTP
+openai
+requests
+httpx
+
+# Text processing
+nltk
+beautifulsoup4
+python-docx
+PyPDF2
+
+# Web interface (for tomorrow)
+streamlit
+plotly
+
+# Development tools
+python-dotenv
+loguru
