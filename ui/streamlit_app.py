@@ -809,11 +809,6 @@ def main():
         # Display existing conversation
         display_conversation_history()
         
-        # Display workflow monitor if processing
-        if st.session_state.processing:
-            display_workflow_monitor()
-            display_activity_log()
-        
         # Handle streaming - process immediately when stream is set
         if st.session_state.current_stream and st.session_state.current_query:
             # Process with proper streaming simulation
@@ -847,16 +842,20 @@ def main():
             for agent in ['coordinator', 'research', 'analysis']:
                 update_workflow_status(agent, 'pending', 'Waiting to start...')
             
+            # Create a single progress area that will be updated throughout
+            progress_area = st.empty()
+            
             # Phase 1: Coordinator
             st.info("🔍 **Phase 1:** Analyzing your legal question...")
             update_workflow_status('coordinator', 'running', 'Analyzing query structure...')
             add_activity_log("coordinator", "Parsing legal question and identifying domain", "info")
             
-            # Show progress
-            progress_placeholder = st.empty()
-            with progress_placeholder.container():
+            # Update progress display
+            with progress_area.container():
                 display_workflow_monitor()
-                display_activity_log()
+                with st.expander("🔍 View Processing Details", expanded=False):
+                    for log in st.session_state.activity_log[-5:]:  # Show last 5 logs
+                        st.text(f"[{log['timestamp']}] {log['agent']}: {log['message']}")
             
             time.sleep(2)  # Simulate processing time
             
@@ -868,9 +867,12 @@ def main():
             update_workflow_status('research', 'running', 'Searching legal documents...')
             add_activity_log("research", "Retrieving relevant legal precedents and statutes", "info")
             
-            with progress_placeholder.container():
+            # Update progress display
+            with progress_area.container():
                 display_workflow_monitor()
-                display_activity_log()
+                with st.expander("🔍 View Processing Details", expanded=False):
+                    for log in st.session_state.activity_log[-5:]:  # Show last 5 logs
+                        st.text(f"[{log['timestamp']}] {log['agent']}: {log['message']}")
             
             time.sleep(2)  # Simulate processing time
             
@@ -882,9 +884,12 @@ def main():
             update_workflow_status('analysis', 'running', 'Generating legal analysis...')
             add_activity_log("analysis", "Synthesizing research into comprehensive analysis", "info")
             
-            with progress_placeholder.container():
+            # Update progress display
+            with progress_area.container():
                 display_workflow_monitor()
-                display_activity_log()
+                with st.expander("🔍 View Processing Details", expanded=False):
+                    for log in st.session_state.activity_log[-5:]:  # Show last 5 logs
+                        st.text(f"[{log['timestamp']}] {log['agent']}: {log['message']}")
             
             time.sleep(1)  # Simulate processing time
             
@@ -920,8 +925,8 @@ def main():
                 
                 st.session_state.processing = False
                 
-                # Clear progress indicators
-                progress_placeholder.empty()
+                # Clear the progress area after completion
+                progress_area.empty()
                 
             except Exception as e:
                 add_activity_log("system", f"Error in processing: {str(e)}", "error")
@@ -932,7 +937,8 @@ def main():
                 st.session_state.processing = False
                 
                 st.error(f"❌ **Error:** {str(e)}")
-                progress_placeholder.empty()
+                # Clear the progress area on error
+                progress_area.empty()
             
             # Force a rerun to show final results
             st.rerun()
