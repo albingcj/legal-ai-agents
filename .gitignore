@@ -34,8 +34,6 @@ pip-wheel-metadata/
 /data/
 /chroma_db/
 
-# UI and assets (if not needed in version control)
-/ui/
 
 # Environment files
 .env
