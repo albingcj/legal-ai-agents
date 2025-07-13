@@ -616,6 +616,102 @@ I apologize, but the system is currently experiencing technical difficulties and
             'confidence_score': 0.0
         }
 
+def execute_legal_workflow_stream(query: str):
+    """Execute the legal workflow with streaming support"""
+    # Initialize the workflow state
+    state = LegalWorkflowState(
+        query=query,
+        workflow_id=str(uuid.uuid4()),
+        timestamp=datetime.now().isoformat(),
+        agent_logs=[],
+        current_step="starting",
+        workflow_status="running"
+    )
+    
+    workflow = ThreadSafeLegalWorkflow()
+    
+    try:
+        # Step 1: Coordinator
+        yield {
+            'type': 'status_update',
+            'agent': 'coordinator',
+            'status': 'running',
+            'message': 'Analyzing query...'
+        }
+        
+        coordinator = CoordinatorAgent()
+        state = coordinator.process(state)
+        
+        yield {
+            'type': 'status_update',
+            'agent': 'coordinator',
+            'status': 'completed',
+            'message': 'Query analyzed'
+        }
+        
+        # Step 2: Research
+        yield {
+            'type': 'status_update',
+            'agent': 'research',
+            'status': 'running',
+            'message': 'Searching legal documents...'
+        }
+        
+        research = ResearchAgent()
+        state = research.process(state)
+        
+        yield {
+            'type': 'status_update',
+            'agent': 'research',
+            'status': 'completed',
+            'message': 'Research completed'
+        }
+        
+        # Step 3: Analysis with streaming
+        yield {
+            'type': 'status_update',
+            'agent': 'analysis',
+            'status': 'running',
+            'message': 'Generating legal analysis...'
+        }
+        
+        analysis = AnalysisAgent()
+        
+        # Stream the analysis
+        for chunk in analysis.process_stream(state):
+            if chunk['type'] == 'analysis_chunk':
+                yield {
+                    'type': 'analysis_chunk',
+                    'content': chunk['content'],
+                    'full_content': chunk['full_content']
+                }
+            elif chunk['type'] == 'analysis_complete':
+                state = chunk['state']
+                yield {
+                    'type': 'status_update',
+                    'agent': 'analysis',
+                    'status': 'completed',
+                    'message': 'Analysis generated'
+                }
+                break
+            elif chunk['type'] == 'error':
+                yield chunk
+                return
+        
+        # Final result
+        yield {
+            'type': 'workflow_complete',
+            'result': state
+        }
+        
+    except Exception as e:
+        error_msg = f"Workflow error: {str(e)}"
+        yield {
+            'type': 'error',
+            'message': error_msg,
+            'state': state
+        }
+
 # Test the workflow
 if __name__ == "__main__":
     from tools.document_loader import LegalDocumentLoader
@@ -667,3 +763,100 @@ if __name__ == "__main__":
     
     except Exception as e:
         print(f"Test failed: {str(e)}")
+
+
+def execute_legal_workflow_stream(query: str):
+    """Execute the legal workflow with streaming support"""
+    # Initialize the workflow state
+    state = LegalWorkflowState(
+        query=query,
+        workflow_id=str(uuid.uuid4()),
+        timestamp=datetime.now().isoformat(),
+        agent_logs=[],
+        current_step="starting",
+        workflow_status="running"
+    )
+    
+    workflow = ThreadSafeLegalWorkflow()
+    
+    try:
+        # Step 1: Coordinator
+        yield {
+            'type': 'status_update',
+            'agent': 'coordinator',
+            'status': 'running',
+            'message': 'Analyzing query...'
+        }
+        
+        coordinator = CoordinatorAgent()
+        state = coordinator.process(state)
+        
+        yield {
+            'type': 'status_update',
+            'agent': 'coordinator',
+            'status': 'completed',
+            'message': 'Query analyzed'
+        }
+        
+        # Step 2: Research
+        yield {
+            'type': 'status_update',
+            'agent': 'research',
+            'status': 'running',
+            'message': 'Searching legal documents...'
+        }
+        
+        research = ResearchAgent()
+        state = research.process(state)
+        
+        yield {
+            'type': 'status_update',
+            'agent': 'research',
+            'status': 'completed',
+            'message': 'Research completed'
+        }
+        
+        # Step 3: Analysis with streaming
+        yield {
+            'type': 'status_update',
+            'agent': 'analysis',
+            'status': 'running',
+            'message': 'Generating legal analysis...'
+        }
+        
+        analysis = AnalysisAgent()
+        
+        # Stream the analysis
+        for chunk in analysis.process_stream(state):
+            if chunk['type'] == 'analysis_chunk':
+                yield {
+                    'type': 'analysis_chunk',
+                    'content': chunk['content'],
+                    'full_content': chunk['full_content']
+                }
+            elif chunk['type'] == 'analysis_complete':
+                state = chunk['state']
+                yield {
+                    'type': 'status_update',
+                    'agent': 'analysis',
+                    'status': 'completed',
+                    'message': 'Analysis generated'
+                }
+                break
+            elif chunk['type'] == 'error':
+                yield chunk
+                return
+        
+        # Final result
+        yield {
+            'type': 'workflow_complete',
+            'result': state
+        }
+        
+    except Exception as e:
+        error_msg = f"Workflow error: {str(e)}"
+        yield {
+            'type': 'error',
+            'message': error_msg,
+            'state': state
+        }

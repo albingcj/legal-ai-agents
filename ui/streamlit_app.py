@@ -811,7 +811,7 @@ def main():
         
         # Handle streaming - process immediately when stream is set
         if st.session_state.current_stream and st.session_state.current_query:
-            # Process with proper streaming simulation
+            # Process with real streaming from backend
             query_to_process = st.session_state.current_query
             
             # Add log entries
@@ -820,7 +820,7 @@ def main():
             # Prepare the streaming response container
             assistant_response = {
                 'role': 'assistant',
-                'content': "🔄 Processing your legal query...",
+                'content': "",
                 'timestamp': datetime.now().strftime("%H:%M"),
                 'metadata': {
                     'confidence': 0,
@@ -842,86 +842,88 @@ def main():
             for agent in ['coordinator', 'research', 'analysis']:
                 update_workflow_status(agent, 'pending', 'Waiting to start...')
             
-            # Create a single progress area that will be updated throughout
+            # Create containers for streaming
             progress_area = st.empty()
+            response_area = st.empty()
             
-            # Phase 1: Coordinator
-            st.info("🔍 **Phase 1:** Analyzing your legal question...")
-            update_workflow_status('coordinator', 'running', 'Analyzing query structure...')
-            add_activity_log("coordinator", "Parsing legal question and identifying domain", "info")
-            
-            # Update progress display
-            with progress_area.container():
-                display_workflow_monitor()
-                with st.expander("🔍 View Processing Details", expanded=False):
-                    for log in st.session_state.activity_log[-5:]:  # Show last 5 logs
-                        st.text(f"[{log['timestamp']}] {log['agent']}: {log['message']}")
-            
-            time.sleep(2)  # Simulate processing time
-            
-            update_workflow_status('coordinator', 'completed', 'Query analyzed successfully')
-            add_activity_log("coordinator", "Legal domain identified and query parsed", "info")
-            
-            # Phase 2: Research
-            st.info("📚 **Phase 2:** Searching legal documents and precedents...")
-            update_workflow_status('research', 'running', 'Searching legal documents...')
-            add_activity_log("research", "Retrieving relevant legal precedents and statutes", "info")
-            
-            # Update progress display
-            with progress_area.container():
-                display_workflow_monitor()
-                with st.expander("🔍 View Processing Details", expanded=False):
-                    for log in st.session_state.activity_log[-5:]:  # Show last 5 logs
-                        st.text(f"[{log['timestamp']}] {log['agent']}: {log['message']}")
-            
-            time.sleep(2)  # Simulate processing time
-            
-            update_workflow_status('research', 'completed', 'Research completed successfully')
-            add_activity_log("research", "Found relevant legal documents and citations", "info")
-            
-            # Phase 3: Analysis
-            st.info("⚖️ **Phase 3:** Generating comprehensive legal analysis...")
-            update_workflow_status('analysis', 'running', 'Generating legal analysis...')
-            add_activity_log("analysis", "Synthesizing research into comprehensive analysis", "info")
-            
-            # Update progress display
-            with progress_area.container():
-                display_workflow_monitor()
-                with st.expander("🔍 View Processing Details", expanded=False):
-                    for log in st.session_state.activity_log[-5:]:  # Show last 5 logs
-                        st.text(f"[{log['timestamp']}] {log['agent']}: {log['message']}")
-            
-            time.sleep(1)  # Simulate processing time
-            
-            # Execute the actual workflow in background
             try:
-                st.info("🚀 **Executing full workflow...** Please wait while we generate your response.")
+                # Import the streaming workflow
+                from workflows.legal_workflow import execute_legal_workflow_stream
                 
-                # Execute the actual workflow
-                result = execute_legal_workflow(query=query_to_process)
-                
-                update_workflow_status('analysis', 'completed', 'Analysis generated successfully')
-                add_activity_log("analysis", "Legal analysis completed with citations", "info")
-                
-                # Update the final response
-                if result and result.get('final_response'):
-                    response = result['final_response']
-                    idx = len(st.session_state.conversation_history) - 1
-                    st.session_state.conversation_history[idx]['content'] = response['analysis']
-                    st.session_state.conversation_history[idx]['metadata'] = {
-                        'confidence': result.get('confidence_score', 0),
-                        'domain': response.get('legal_domain', 'General Law'),
-                        'sources': response.get('sources', []),
-                        'key_points': response.get('key_points', []),
-                        'disclaimer': response.get('disclaimer', '')
-                    }
-                    add_activity_log("system", "Query processing completed successfully", "info")
-                    update_performance_metrics(result)
-                    st.success("✅ **Analysis Complete!** Your legal research is ready.")
-                else:
-                    idx = len(st.session_state.conversation_history) - 1
-                    st.session_state.conversation_history[idx]['content'] = "I apologize, but I was unable to generate a response for your query."
-                    st.error("❌ Unable to generate response. Please try again.")
+                # Start streaming workflow
+                for stream_chunk in execute_legal_workflow_stream(query_to_process):
+                    
+                    if stream_chunk['type'] == 'status_update':
+                        # Update agent status
+                        agent = stream_chunk['agent']
+                        status = stream_chunk['status']
+                        message = stream_chunk['message']
+                        
+                        update_workflow_status(agent, status, message)
+                        add_activity_log(agent, message, "info")
+                        
+                        # Update progress display
+                        with progress_area.container():
+                            display_workflow_monitor()
+                            with st.expander("🔍 View Processing Details", expanded=False):
+                                for log in st.session_state.activity_log[-5:]:  # Show last 5 logs
+                                    st.text(f"[{log['timestamp']}] {log['agent']}: {log['message']}")
+                    
+                    elif stream_chunk['type'] == 'analysis_chunk':
+                        # Stream the analysis content as it's generated
+                        chunk_content = stream_chunk['content']
+                        full_content = stream_chunk['full_content']
+                        
+                        # Update the conversation history with streaming content
+                        idx = len(st.session_state.conversation_history) - 1
+                        st.session_state.conversation_history[idx]['content'] = full_content
+                        
+                        # Update the response area with current content
+                        with response_area.container():
+                            st.markdown("**Legal Assistant** *(Streaming...)*")
+                            st.info(full_content)
+                            st.caption("🔄 Analysis is being generated in real-time...")
+                    
+                    elif stream_chunk['type'] == 'workflow_complete':
+                        # Final result
+                        result = stream_chunk['result']
+                        
+                        if result and result.get('final_response'):
+                            response = result['final_response']
+                            idx = len(st.session_state.conversation_history) - 1
+                            st.session_state.conversation_history[idx]['content'] = response['analysis']
+                            st.session_state.conversation_history[idx]['metadata'] = {
+                                'confidence': result.get('confidence_score', 0),
+                                'domain': response.get('legal_domain', 'General Law'),
+                                'sources': response.get('sources', []),
+                                'key_points': response.get('key_points', []),
+                                'disclaimer': response.get('disclaimer', '')
+                            }
+                            add_activity_log("system", "Query processing completed successfully", "info")
+                            update_performance_metrics(result)
+                            
+                            # Clear streaming display and show final result
+                            response_area.empty()
+                            st.success("✅ **Analysis Complete!** Your legal research is ready.")
+                        else:
+                            idx = len(st.session_state.conversation_history) - 1
+                            st.session_state.conversation_history[idx]['content'] = "I apologize, but I was unable to generate a response for your query."
+                            response_area.empty()
+                            st.error("❌ Unable to generate response. Please try again.")
+                        
+                        break
+                    
+                    elif stream_chunk['type'] == 'error':
+                        # Handle errors
+                        error_msg = stream_chunk['message']
+                        add_activity_log("system", f"Error in processing: {error_msg}", "error")
+                        
+                        idx = len(st.session_state.conversation_history) - 1
+                        st.session_state.conversation_history[idx]['content'] = f"I apologize, but I encountered an error: {error_msg}"
+                        
+                        response_area.empty()
+                        st.error(f"❌ **Error:** {error_msg}")
+                        break
                 
                 st.session_state.processing = False
                 
@@ -929,13 +931,14 @@ def main():
                 progress_area.empty()
                 
             except Exception as e:
-                add_activity_log("system", f"Error in processing: {str(e)}", "error")
+                add_activity_log("system", f"Error in streaming: {str(e)}", "error")
                 update_workflow_status('analysis', 'error', f'Error: {str(e)}')
                 
                 idx = len(st.session_state.conversation_history) - 1
                 st.session_state.conversation_history[idx]['content'] = f"I apologize, but I encountered an error: {str(e)}"
                 st.session_state.processing = False
                 
+                response_area.empty()
                 st.error(f"❌ **Error:** {str(e)}")
                 # Clear the progress area on error
                 progress_area.empty()
