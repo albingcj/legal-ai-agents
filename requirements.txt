@@ -28,3 +28,6 @@ plotly
 # Development tools
 python-dotenv
 loguru
+
+# Testing and validation
+pytest
