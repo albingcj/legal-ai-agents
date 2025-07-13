@@ -222,6 +222,299 @@ legal-ai-agents/
 - **⚖️ Criminal Law**: Procedures, rights, defenses, Miranda rights
 - **🏥 Tort Law**: Negligence, liability, damages, personal injury
 
+## 🤖 Creating and Adding New Agents
+
+The system is designed with extensibility in mind. You can easily add new specialized agents to handle specific legal domains or tasks.
+
+### Agent Architecture Overview
+
+The current workflow uses three core agents:
+1. **CoordinatorAgent**: Parses queries and determines legal domain
+2. **ResearchAgent**: Searches legal documents and extracts relevant information
+3. **AnalysisAgent**: Provides comprehensive legal analysis and citations
+
+### Creating a New Agent
+
+#### Step 1: Create the Agent Class
+
+Create a new file in the `agents/` directory (e.g., `agents/citation_agent.py`):
+
+```python
+from typing import Dict, Any
+from .base_agent import BaseAgent
+from tools.llm_client import LMStudioClient
+
+class CitationAgent(BaseAgent):
+    def __init__(self):
+        super().__init__(
+            name="Citation",
+            description="Formats and validates legal citations"
+        )
+        self.llm_client = LMStudioClient()
+    
+    def process(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Format legal citations from research results"""
+        self.log("Starting citation formatting process")
+        
+        # Validate required inputs
+        if not self.validate_state(state, ['research_results']):
+            state['error'] = "Missing research results for citation formatting"
+            return state
+        
+        try:
+            # Your custom logic here
+            research_results = state.get('research_results', [])
+            formatted_citations = self.format_citations(research_results)
+            
+            # Update state with results
+            state.update({
+                'formatted_citations': formatted_citations,
+                'citation_count': len(formatted_citations),
+                'citation_status': 'completed'
+            })
+            
+            self.log(f"Formatted {len(formatted_citations)} citations")
+            
+        except Exception as e:
+            self.log(f"Citation formatting error: {str(e)}", "ERROR")
+            state['error'] = f"Citation formatting failed: {str(e)}"
+            state['citation_status'] = 'failed'
+        
+        return state
+    
+    def format_citations(self, research_results):
+        """Custom citation formatting logic"""
+        citations = []
+        for result in research_results:
+            # Add your formatting logic here
+            citation = {
+                'title': result.get('title', 'Unknown'),
+                'source': result.get('source', 'Unknown'),
+                'relevance': result.get('relevance', 0.0),
+                'formatted': f"{result.get('title', 'Unknown')} - {result.get('source', 'Unknown')}"
+            }
+            citations.append(citation)
+        return citations
+```
+
+#### Step 2: Update Workflow State
+
+Add new state fields to `workflows/legal_workflow.py` in the `LegalWorkflowState` class:
+
+```python
+class LegalWorkflowState(TypedDict):
+    # ...existing fields...
+    
+    # Citation agent outputs
+    formatted_citations: Optional[List[Dict]]
+    citation_count: Optional[int]
+    citation_status: Optional[str]
+```
+
+#### Step 3: Create Workflow Node
+
+Add a new node function in `workflows/legal_workflow.py`:
+
+```python
+def citation_node(state: LegalWorkflowState) -> LegalWorkflowState:
+    """Process citations through citation agent"""
+    logger.info("Executing citation node")
+    
+    try:
+        # Initialize citation agent
+        citation_agent = CitationAgent()
+        
+        # Update state
+        state['current_step'] = 'citation_formatting'
+        
+        # Process through citation agent
+        result_state = citation_agent.process(dict(state))
+        
+        # Merge results back to state
+        for key, value in result_state.items():
+            state[key] = value
+        
+        # Add agent logs
+        if 'agent_logs' not in state:
+            state['agent_logs'] = []
+        
+        state['agent_logs'].append({
+            'agent': 'citation',
+            'timestamp': datetime.now().isoformat(),
+            'status': 'completed' if not state.get('error') else 'failed',
+            'details': citation_agent.get_agent_info()
+        })
+        
+        logger.info("Citation node completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Citation node error: {str(e)}")
+        state['error'] = f"Citation agent failed: {str(e)}"
+        
+    return state
+```
+
+#### Step 4: Integrate into Workflow Graph
+
+Update the `create_workflow()` function in `workflows/legal_workflow.py`:
+
+```python
+def create_workflow():
+    """Create the legal workflow graph with new agent"""
+    workflow = StateGraph(LegalWorkflowState)
+    
+    # Add existing nodes
+    workflow.add_node("coordinator", coordinator_node)
+    workflow.add_node("research", research_node)
+    workflow.add_node("citation", citation_node)  # New node
+    workflow.add_node("analysis", analysis_node)
+    
+    # Update workflow edges
+    workflow.add_edge(START, "coordinator")
+    workflow.add_edge("coordinator", "research")
+    workflow.add_edge("research", "citation")     # New edge
+    workflow.add_edge("citation", "analysis")     # Updated edge
+    workflow.add_edge("analysis", END)
+    
+    return workflow.compile()
+```
+
+#### Step 5: Update Agent Imports
+
+Add the import to `workflows/legal_workflow.py`:
+
+```python
+from agents.coordinator import CoordinatorAgent
+from agents.research_agent import ResearchAgent
+from agents.citation_agent import CitationAgent  # New import
+from agents.analysis_agent import AnalysisAgent
+```
+
+### Advanced Agent Features
+
+#### Custom Tool Integration
+Agents can use specialized tools:
+
+```python
+class SpecializedAgent(BaseAgent):
+    def __init__(self):
+        super().__init__(name="Specialized", description="Specialized processing")
+        self.custom_tool = CustomTool()  # Your custom tool
+    
+    def process(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        # Use custom tools
+        result = self.custom_tool.process(state.get('query'))
+        state['specialized_result'] = result
+        return state
+```
+
+#### Conditional Workflow Routing
+Add conditional logic to determine which agents to use:
+
+```python
+def should_use_citation_agent(state: LegalWorkflowState) -> bool:
+    """Determine if citation agent should be used"""
+    return len(state.get('research_results', [])) > 3
+
+# In create_workflow():
+workflow.add_conditional_edges(
+    "research",
+    should_use_citation_agent,
+    {
+        True: "citation",
+        False: "analysis"
+    }
+)
+```
+
+#### Agent Communication
+Agents can pass specific data to each other:
+
+```python
+def research_node(state: LegalWorkflowState) -> LegalWorkflowState:
+    # ...existing code...
+    
+    # Pass specific data to next agent
+    state['research_metadata'] = {
+        'search_strategy': 'comprehensive',
+        'confidence_threshold': 0.7,
+        'preferred_sources': ['case_law', 'statutes']
+    }
+    
+    return state
+```
+
+### Testing New Agents
+
+Create tests for your new agent in `tests/`:
+
+```python
+# tests/test_citation_agent.py
+import pytest
+from agents.citation_agent import CitationAgent
+
+def test_citation_agent_basic():
+    agent = CitationAgent()
+    state = {
+        'research_results': [
+            {'title': 'Test Case', 'source': 'Test Court', 'relevance': 0.9}
+        ]
+    }
+    
+    result = agent.process(state)
+    
+    assert 'formatted_citations' in result
+    assert result['citation_count'] == 1
+    assert result['citation_status'] == 'completed'
+```
+
+### Best Practices for Agent Development
+
+1. **🔍 Single Responsibility**: Each agent should have one clear purpose
+2. **🔗 State Management**: Always validate input state and update output state properly
+3. **🚨 Error Handling**: Implement robust error handling with meaningful messages
+4. **📊 Logging**: Use the built-in logging system for debugging and monitoring
+5. **🧪 Testing**: Write comprehensive tests for your agent logic
+6. **📚 Documentation**: Document your agent's purpose, inputs, and outputs
+7. **⚡ Performance**: Consider processing time and optimize for efficiency
+8. **🔒 Thread Safety**: Ensure your agent can handle concurrent requests
+
+### Example: Adding a Legal Research Validation Agent
+
+```python
+# agents/validation_agent.py
+class ValidationAgent(BaseAgent):
+    def __init__(self):
+        super().__init__(
+            name="Validation",
+            description="Validates legal research accuracy and completeness"
+        )
+    
+    def process(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        # Validate research quality
+        research_results = state.get('research_results', [])
+        validation_score = self.calculate_validation_score(research_results)
+        
+        state.update({
+            'validation_score': validation_score,
+            'validation_status': 'completed',
+            'quality_metrics': {
+                'source_diversity': self.check_source_diversity(research_results),
+                'relevance_threshold': self.check_relevance_threshold(research_results),
+                'citation_quality': self.check_citation_quality(research_results)
+            }
+        })
+        
+        return state
+```
+
+This modular approach allows you to extend the system with specialized agents for:
+- **Document Summarization**: Summarizing long legal documents
+- **Precedent Analysis**: Finding and analyzing legal precedents
+- **Risk Assessment**: Evaluating legal risks in different scenarios
+- **Compliance Checking**: Checking regulatory compliance
+- **Contract Analysis**: Specialized contract review and analysis
+
 ## 🔧 Configuration Options
 
 Edit `.env` file or `config/settings.py` to customize:
