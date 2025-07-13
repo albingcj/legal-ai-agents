@@ -1,14 +1,23 @@
+import sys
+import os
 from typing import TypedDict, List, Optional, Dict, Any
 from langgraph.graph import StateGraph, END
-from agents.coordinator import CoordinatorAgent
-from agents.research_agent import ResearchAgent
-from agents.analysis_agent import AnalysisAgent
 import logging
 import threading
 import time
 import uuid
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as ConcurrentTimeoutError
+
+# Add project root to path if not already there
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Now import the agents
+from agents.coordinator import CoordinatorAgent
+from agents.research_agent import ResearchAgent
+from agents.analysis_agent import AnalysisAgent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
