@@ -47,6 +47,77 @@ A powerful AI-powered legal research and analysis assistant built with advanced 
 - **Real-time Streaming**: Live response generation and status updates
 - **Modular Design**: Clean separation of concerns for maintainability
 
+## 🎬 Demo
+
+Watch the Legal AI Assistant in action:
+
+<img width="1392" alt="Demo video" src="./assets/demo.mp4">
+
+*The demo showcases the multi-agent workflow, real-time processing, and comprehensive legal analysis capabilities of the system.*
+
+## 🔄 Workflow Architecture
+
+The Legal AI Assistant follows a sophisticated multi-agent workflow orchestrated by LangGraph:
+
+```mermaid
+graph TD
+    A[👤 User Query] --> B[🎯 Coordinator Agent]
+    
+    B --> C{📋 Domain Classification}
+    C -->|Contract Law| D[📚 Research Agent]
+    C -->|Employment Law| D
+    C -->|IP Law| D
+    C -->|Criminal Law| D
+    C -->|Tort Law| D
+    
+    D --> E[🔍 Vector Database Search]
+    E --> F[📖 Document Retrieval]
+    F --> G[🧠 Analysis Agent]
+    
+    G --> H[💡 Legal Analysis]
+    H --> I[📊 Confidence Scoring]
+    I --> J[📝 Citation Generation]
+    J --> K[✅ Final Response]
+    
+    K --> L[💬 Streamlit UI]
+    
+    subgraph "🏗️ LangGraph State Management"
+        M[📊 State Tracking]
+        N[🔄 Error Handling]
+        O[📈 Progress Monitoring]
+    end
+    
+    subgraph "🛠️ Supporting Systems"
+        P[🗃️ ChromaDB Vector Store]
+        Q[🤖 LM Studio Local AI]
+        R[🔗 SentenceTransformers]
+    end
+    
+    D -.-> M
+    G -.-> N
+    L -.-> O
+    
+    E -.-> P
+    H -.-> Q
+    F -.-> R
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style D fill:#e8f5e8
+    style G fill:#fff3e0
+    style K fill:#e0f2f1
+    style L fill:#fce4ec
+```
+
+### 🔄 Workflow Stages:
+
+1. **🎯 Coordination**: Query parsing and domain classification
+2. **📚 Research**: Semantic search across legal document database
+3. **🧠 Analysis**: Comprehensive legal analysis with context awareness
+4. **📊 Response**: Formatted output with citations and confidence scores
+
+Each stage maintains state through LangGraph, enabling robust error handling, progress tracking, and seamless agent communication.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
