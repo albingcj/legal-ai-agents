@@ -2,15 +2,23 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.llm_client import LMStudioClient
+from tools.llm_client import UniversalLLMClient
 from tools.vector_store import LegalVectorStore
 from tools.document_loader import LegalDocumentLoader
 from agents.coordinator import CoordinatorAgent
 
 def test_llm_client():
-    """Test LM Studio connection"""
-    print("=== Testing LM Studio Client ===")
-    client = LMStudioClient()
+    """Test LLM client connection"""
+    print("=== Testing Universal LLM Client ===")
+    client = UniversalLLMClient()
+    
+    # Test health check first
+    health = client.health_check()
+    print(f"Health Status: {health}")
+    
+    if health['status'] != 'healthy':
+        print(f"LLM not healthy: {health['message']}")
+        return False
     
     messages = [
         {"role": "user", "content": "Hello! Are you working properly?"}
@@ -71,7 +79,7 @@ def test_full_pipeline():
     print("\n=== Testing Full Pipeline ===")
     
     # Initialize components
-    llm_client = LMStudioClient()
+    llm_client = UniversalLLMClient()
     vs = LegalVectorStore()
     coordinator = CoordinatorAgent()
     

@@ -22,11 +22,13 @@ A powerful AI-powered legal research and analysis assistant built with advanced 
 - ✅ Support for multiple legal domains
 
 ### v2 New Features:
+- 🆕 **Universal LLM Support**: Integrated LiteLLM for compatibility with 100+ AI providers
 - 🆕 **Advanced Workflow Orchestration**: LangGraph state management
 - 🆕 **Real-time Processing Visualization**: Live workflow status and metrics
 - 🆕 **Enhanced Error Handling**: Robust retry mechanisms and error recovery
 - 🆕 **Conversation History**: Persistent chat sessions with context awareness
 - 🆕 **Advanced Analytics**: Processing time metrics and confidence scoring
+- 🆕 **Provider Flexibility**: Support for OpenAI, Anthropic, Google, Azure, local models, and more
 
 ## 🛠️ Tech Stack
 
@@ -34,17 +36,21 @@ A powerful AI-powered legal research and analysis assistant built with advanced 
 |----------|------------|---------|
 | **Frontend** | [Streamlit](https://streamlit.io/) | Modern web interface with real-time updates |
 | **AI Orchestration** | [LangGraph](https://langchain-ai.github.io/langgraph/) | Advanced workflow management and state handling |
+| **LLM Integration** | [LiteLLM](https://litellm.ai/) | Universal interface for 100+ AI providers |
 | **LLM Framework** | [LangChain](https://langchain.com/) | Large language model integration and tools |
 | **Vector Database** | [ChromaDB](https://www.trychroma.com/) | Efficient document storage and similarity search |
 | **Embeddings** | [SentenceTransformers](https://www.sbert.net/) | High-quality text embedding generation |
-| **Local AI** | [LM Studio](https://lmstudio.ai/) | Local LLM hosting  |
+| **Local AI Options** | [LM Studio](https://lmstudio.ai/), [Ollama](https://ollama.ai/) | Local LLM hosting for privacy |
+| **Cloud AI Options** | OpenAI, Anthropic, Google, Azure | Enterprise-grade cloud AI services |
 | **Language** | Python 3.11+ | Core development with modern features |
 
 ### 🔧 Key Architecture Features:
+- **Universal LLM Integration**: Support for 100+ AI providers via LiteLLM
 - **Enhanced Multi-Agent System**: Improved coordination between agents
 - **State Management**: Advanced workflow state tracking with LangGraph
 - **Thread-Safe Operations**: Concurrent request handling with proper synchronization
 - **Real-time Streaming**: Live response generation and status updates
+- **Provider Flexibility**: Easy switching between local and cloud AI providers
 - **Modular Design**: Clean separation of concerns for maintainability
 
 ## 🎬 Demo
@@ -158,25 +164,81 @@ pip install -r requirements.txt
 ```
 
 ### 5. Environment Configuration
-Create a `.env` file in the project root:
-```env
-# LM Studio Configuration (Optional - uses defaults if not set)
-LM_STUDIO_BASE_URL=http://localhost:1234
-LM_STUDIO_API_KEY=not-needed
-MODEL_NAME=microsoft/Phi-3-mini-4k-instruct-gguf
-
-# Database Configuration (Optional - uses defaults if not set)
-CHROMA_DB_PATH=./chroma_db
-EMBEDDING_MODEL=all-MiniLM-L6-v2
-MAX_RETRIEVED_DOCS=8
-TEMPERATURE=0.1
-DEBUG=False
+Create a `.env` file in the project root by copying the example:
+```bash
+cp .env.example .env
 ```
 
-### 6. Setup LM Studio (Local AI Model)
+**Choose ONE of the following LLM provider configurations:**
+
+#### Option 1: Google Gemini (Latest AI capabilities) - Recommended
+```env
+# Latest Google AI with excellent performance
+LLM_MODEL=gemini/gemini-2.0-flash
+LLM_API_KEY=your-google-api-key-here
+```
+
+#### Option 2: LM Studio (Local/Privacy-focused)
+```env
+# Local AI with complete privacy
+LLM_MODEL=openai/local-model
+LM_STUDIO_BASE_URL=http://localhost:1234
+LM_STUDIO_API_KEY=not-needed
+```
+
+#### Option 3: OpenAI (Easy setup)
+```env
+# Cloud-based AI with excellent performance
+LLM_MODEL=openai/gpt-3.5-turbo
+LLM_API_KEY=your-openai-api-key-here
+```
+
+#### Option 4: Anthropic Claude (Best for legal reasoning)
+```env
+# Excellent for complex legal analysis
+LLM_MODEL=anthropic/claude-3-sonnet-20240229
+LLM_API_KEY=your-anthropic-api-key-here
+```
+
+#### Option 5: Ollama (Local alternative)
+```env
+# Another local option via Ollama
+LLM_MODEL=ollama/llama2
+LLM_API_BASE=http://localhost:11434
+```
+
+**Optional Advanced Settings:**
+```env
+# Fine-tune LLM behavior
+LLM_TEMPERATURE=0.1          # Response creativity (0.0-1.0)
+LLM_MAX_TOKENS=1000         # Maximum response length
+
+# Database settings
+CHROMA_DB_PATH=./chroma_db
+```
+
+### 6. Setup Your Chosen LLM Provider
+
+#### For Google Gemini (Recommended for latest AI):
+1. Get API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Click "Create API Key" and copy the generated key
+3. Add to your .env file: `LLM_API_KEY=your-actual-api-key`
+4. Gemini 2.0 Flash offers excellent speed and capabilities
+
+#### For LM Studio (Recommended for privacy):
 1. Download and install [LM Studio](https://lmstudio.ai/)
-2. Download a compatible model (recommended: `microsoft/Phi-3-mini-4k-instruct-gguf`)
-3. Start the local server in LM Studio on port 1234
+2. Download a compatible chat model (e.g., Llama-2, Mistral, Phi-3)
+3. Go to "Local Server" tab and start the server on port 1234
+4. Load your chosen model
+
+#### For Other Cloud Providers:
+- **OpenAI**: Get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+- **Anthropic**: Get API key from [Anthropic Console](https://console.anthropic.com/)
+
+#### For Ollama:
+1. Install [Ollama](https://ollama.ai/)
+2. Pull a model: `ollama pull llama2`
+3. Start Ollama server
 
 ### 7. Run the Application
 ```bash

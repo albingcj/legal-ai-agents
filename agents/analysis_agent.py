@@ -1,6 +1,6 @@
 from typing import Dict, Any, List, Optional
 from .base_agent import BaseAgent
-from tools.llm_client import LMStudioClient
+from tools.llm_client import UniversalLLMClient
 import re
 from datetime import datetime
 import json
@@ -13,7 +13,7 @@ class AnalysisAgent(BaseAgent):
         )
         
         # Initialize LLM client
-        self.llm_client = LMStudioClient()
+        self.llm_client = UniversalLLMClient()
         
         # Legal prompt templates for different domains
         self.prompt_templates = {

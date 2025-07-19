@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from workflows.legal_workflow import execute_legal_workflow
 from tools.document_loader import LegalDocumentLoader
 from tools.vector_store import LegalVectorStore
-from tools.llm_client import LMStudioClient
+from tools.llm_client import UniversalLLMClient
 
 # Page configuration
 st.set_page_config(
@@ -161,11 +161,11 @@ def setup_vector_store():
 def check_llm_health():
     """Check if LLM API is healthy and responding (cached)"""
     try:
-        client = LMStudioClient()
+        client = UniversalLLMClient()
         health_result = client.health_check()
         
         if health_result['status'] == 'healthy':
-            return True, f"✅ LLM API is healthy (Model: {health_result['model']})", health_result
+            return True, f"✅ LLM API is healthy ({health_result['provider']}: {health_result['model']})", health_result
         else:
             return False, f"❌ LLM API issue: {health_result['message']}", health_result
             
@@ -272,11 +272,17 @@ def create_sidebar():
         # Show LLM details in expander
         with st.sidebar.expander("🤖 LLM Details", expanded=False):
             if llm_details:
+                st.write(f"**Provider:** {llm_details.get('provider', 'Unknown')}")
                 st.write(f"**Model:** {llm_details.get('model', 'Unknown')}")
-                st.write(f"**Server:** {llm_details.get('base_url', 'Unknown')}")
-                st.write(f"**Status:** {llm_details.get('server_status', 'Unknown')}")
+                st.write(f"**Full Model:** {llm_details.get('full_model', 'Unknown')}")
+                if llm_details.get('api_base'):
+                    st.write(f"**API Base:** {llm_details['api_base']}")
+                if llm_details.get('response_time'):
+                    st.write(f"**Response Time:** {llm_details['response_time']}s")
                 if llm_details.get('test_response'):
                     st.write(f"**Test Response:** {llm_details['test_response']}")
+                if llm_details.get('usage'):
+                    st.write(f"**Usage:** {llm_details['usage']}")
     else:
         st.sidebar.error("🔴 LLM API: Error")
         st.sidebar.error(llm_message)
@@ -285,16 +291,56 @@ def create_sidebar():
         
         # Show troubleshooting info
         with st.sidebar.expander("🔧 Troubleshooting", expanded=True):
-            st.markdown("""
-            **Common solutions:**
-            1. Ensure LM Studio is running
-            2. Check if a model is loaded in LM Studio
-            3. Verify the server URL in settings
-            4. Check if port 1234 is available
-            """)
+            if llm_details and llm_details.get('provider'):
+                provider = llm_details['provider']
+                if provider == 'openai' and 'localhost' in str(llm_details.get('api_base', '')):
+                    st.markdown("""
+                    **LM Studio / Local Model:**
+                    1. Ensure LM Studio is running
+                    2. Check if a model is loaded
+                    3. Verify server is started (port 1234)
+                    4. Check firewall settings
+                    """)
+                elif provider == 'openai':
+                    st.markdown("""
+                    **OpenAI:**
+                    1. Check your API key
+                    2. Verify internet connection
+                    3. Check rate limits
+                    4. Ensure model access
+                    """)
+                elif provider == 'anthropic':
+                    st.markdown("""
+                    **Anthropic:**
+                    1. Check your API key
+                    2. Verify internet connection
+                    3. Check rate limits
+                    4. Ensure model access
+                    """)
+                else:
+                    st.markdown(f"""
+                    **{provider.title()}:**
+                    1. Check your API key
+                    2. Verify internet connection
+                    3. Check rate limits
+                    4. Ensure model access
+                    """)
+            else:
+                st.markdown("""
+                **General troubleshooting:**
+                1. Check API configuration
+                2. Verify internet connection
+                3. Check rate limits
+                4. Ensure model access
+                """)
+            
             if llm_details:
-                st.write(f"**Attempted URL:** {llm_details.get('base_url', 'Unknown')}")
-                st.write(f"**Model:** {llm_details.get('model', 'Unknown')}")
+                st.write(f"**Provider:** {llm_details.get('provider', 'Unknown')}")
+                st.write(f"**Model:** {llm_details.get('full_model', 'Unknown')}")
+                if llm_details.get('api_base'):
+                    st.write(f"**API Base:** {llm_details['api_base']}")
+                if llm_details.get('error_details'):
+                    st.write(f"**Error:** {llm_details['error_details']}")
     
     # Overall system status
     system_ready = db_status and llm_status
@@ -564,27 +610,75 @@ def main():
             # Show detailed error information
             if llm_details:
                 with st.expander("🔧 Detailed Error Information", expanded=True):
-                    st.write(f"**Server URL:** {llm_details.get('base_url', 'Unknown')}")
-                    st.write(f"**Model:** {llm_details.get('model', 'Unknown')}")
-                    st.write(f"**Server Status:** {llm_details.get('server_status', 'Unknown')}")
+                    st.write(f"**Provider:** {llm_details.get('provider', 'Unknown')}")
+                    st.write(f"**Model:** {llm_details.get('full_model', 'Unknown')}")
+                    if llm_details.get('api_base'):
+                        st.write(f"**API Base:** {llm_details['api_base']}")
+                    if llm_details.get('error_details'):
+                        st.write(f"**Technical Error:** {llm_details['error_details']}")
+                    
+                    provider = llm_details.get('provider', '').lower()
+                    
+                    if provider == 'openai' and 'localhost' in str(llm_details.get('api_base', '')):
+                        st.markdown("""
+                        ### LM Studio / Local Model Setup:
+                        1. **Download and Install LM Studio** from https://lmstudio.ai/
+                        2. **Download a Model** - Search and download a chat model (e.g., Llama, Mistral)
+                        3. **Load the Model** - Go to "Chat" tab and select your model
+                        4. **Start Local Server** - Go to "Local Server" tab and click "Start Server"
+                        5. **Configure Model** - Ensure the model is set to serve on port 1234
+                        6. **Test Connection** - Try the server endpoint in your browser: http://localhost:1234/v1/models
+                        """)
+                    elif provider == 'openai':
+                        st.markdown("""
+                        ### OpenAI API Setup:
+                        1. **Get API Key** - Visit https://platform.openai.com/api-keys
+                        2. **Set Environment Variable** - Add `LLM_API_KEY=your-key-here` to your .env file
+                        3. **Set Model** - Add `LLM_MODEL=openai/gpt-3.5-turbo` to your .env file
+                        4. **Check Billing** - Ensure you have credits in your OpenAI account
+                        """)
+                    elif provider == 'anthropic':
+                        st.markdown("""
+                        ### Anthropic API Setup:
+                        1. **Get API Key** - Visit https://console.anthropic.com/
+                        2. **Set Environment Variable** - Add `LLM_API_KEY=your-key-here` to your .env file
+                        3. **Set Model** - Add `LLM_MODEL=anthropic/claude-3-sonnet-20240229` to your .env file
+                        4. **Check Credits** - Ensure you have credits in your Anthropic account
+                        """)
+                    else:
+                        st.markdown(f"""
+                        ### {provider.title()} API Setup:
+                        1. **Get API Key** - Visit your provider's website
+                        2. **Set Environment Variable** - Add `LLM_API_KEY=your-key-here` to your .env file
+                        3. **Set Model** - Add `LLM_MODEL={provider}/model-name` to your .env file
+                        4. **Check Documentation** - Visit LiteLLM docs for provider-specific setup
+                        """)
                     
                     st.markdown("""
-                    ### Troubleshooting Steps:
-                    1. **Start LM Studio** - Make sure LM Studio application is running
-                    2. **Load a Model** - Ensure you have loaded a compatible model in LM Studio
-                    3. **Check Server** - Verify LM Studio server is running on the correct port (default: 1234)
-                    4. **Network Access** - Ensure no firewall is blocking the connection
-                    5. **Model Compatibility** - Make sure the model supports chat completions
+                    ### Environment Configuration (.env file):
+                    ```
+                    # Choose ONE of the following configurations:
                     
-                    ### Quick Fix:
-                    - Open LM Studio
-                    - Go to the "Local Server" tab
-                    - Click "Start Server"
-                    - Load a chat-compatible model
-                    - Refresh this page
+                    # For Google Gemini (Latest AI - Recommended):
+                    LLM_MODEL=gemini/gemini-2.0-flash
+                    LLM_API_KEY=your-google-api-key
+                    
+                    # For LM Studio (Local/Privacy):
+                    LLM_MODEL=openai/local-model
+                    LM_STUDIO_BASE_URL=http://localhost:1234
+                    LM_STUDIO_API_KEY=not-needed
+                    
+                    # For OpenAI:
+                    LLM_MODEL=openai/gpt-3.5-turbo
+                    LLM_API_KEY=your-openai-api-key
+                    
+                    # For Anthropic:
+                    LLM_MODEL=anthropic/claude-3-sonnet-20240229
+                    LLM_API_KEY=your-anthropic-api-key
+                    ```
                     """)
             
-            st.info("The Legal AI Assistant requires both the database and LLM API to be working. Please resolve the LLM API issue and refresh the page.")
+            st.info("The Legal AI Assistant supports multiple LLM providers via LiteLLM. Please configure your preferred provider and refresh the page.")
             st.stop()
         else:
             st.session_state.llm_initialized = True
