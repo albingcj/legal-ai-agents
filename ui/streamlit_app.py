@@ -18,6 +18,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from workflows.legal_workflow import execute_legal_workflow
 from tools.document_loader import LegalDocumentLoader
 from tools.vector_store import LegalVectorStore
+from tools.llm_client import LMStudioClient
 
 # Page configuration
 st.set_page_config(
@@ -27,323 +28,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS with Dark Mode Support
-# st.markdown("""
-# <style>
-#     /* Main header styling */
-#     .main-header {
-#         text-align: center;
-#         padding: 1rem 0;
-#         border-bottom: 2px solid var(--primary-color, #1f77b4);
-#         margin-bottom: 1rem;
-#         color: var(--text-color);
-#     }
-    
-#     /* Legal disclaimer */
-#     .legal-disclaimer {
-#         background-color: var(--background-secondary);
-#         border: 1px solid var(--border-color);
-#         border-radius: 8px;
-#         padding: 1rem;
-#         margin: 1rem 0;
-#         color: var(--text-color);
-#     }
-    
-#     /* Chat container */
-#     .chat-container {
-#         display: flex;
-#         flex-direction: column;
-#         gap: 10px;
-#         margin-bottom: 20px;
-#     }
-    
-#     /* User message styling */
-#     .user-message {
-#         background: linear-gradient(135deg, #2196F3, #21CBF3);
-#         color: white;
-#         border-radius: 18px 18px 4px 18px;
-#         padding: 12px 16px;
-#         margin: 8px 0;
-#         margin-left: 20%;
-#         margin-right: 10px;
-#         align-self: flex-end;
-#         max-width: 75%;
-#         font-size: 0.95rem;
-#         box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-#         word-wrap: break-word;
-#     }
-    
-#     /* Assistant message styling - adapts to theme */
-#     .assistant-message {
-#         background-color: var(--secondary-background-color, #f8f9fa);
-#         color: var(--text-color, #262730);
-#         border: 1px solid var(--border-color, #e6e6e6);
-#         border-radius: 18px 18px 18px 4px;
-#         padding: 12px 16px;
-#         margin: 8px 0;
-#         margin-right: 20%;
-#         align-self: flex-start;
-#         max-width: 75%;
-#         font-size: 0.95rem;
-#         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-#         word-wrap: break-word;
-#     }
-    
-#     /* Dark mode assistant message */
-#     [data-theme="dark"] .assistant-message {
-#         background-color: #262730;
-#         color: #fafafa;
-#         border-color: #464649;
-#         box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-#     }
-    
-#     /* Message header styling */
-#     .message-header {
-#         font-size: 0.75rem;
-#         color: var(--text-color-secondary, #888);
-#         margin-bottom: 6px;
-#         display: flex;
-#         justify-content: space-between;
-#         opacity: 0.8;
-#     }
-    
-#     /* Processing step styling */
-#     .processing-step {
-#         padding: 0.75rem;
-#         margin: 0.5rem 0;
-#         border-radius: 8px;
-#         background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-#         color: #1565c0;
-#         font-size: 0.85rem;
-#         border-left: 4px solid #2196f3;
-#     }
-    
-#     /* Activity log styling */
-#     .activity-log {
-#         background-color: var(--secondary-background-color, #f8f9fa);
-#         border: 1px solid var(--border-color, #e6e6e6);
-#         border-radius: 8px;
-#         font-family: 'Courier New', monospace;
-#         font-size: 0.8rem;
-#         padding: 12px;
-#         margin: 8px 0;
-#         max-height: 250px;
-#         overflow-y: auto;
-#         color: var(--text-color, #262730);
-#     }
-    
-#     /* Dark mode activity log */
-#     [data-theme="dark"] .activity-log {
-#         background-color: #1e1e1e;
-#         border-color: #464649;
-#         color: #e0e0e0;
-#     }
-    
-#     /* Agent activity entries */
-#     .agent-activity {
-#         margin: 4px 0;
-#         padding: 6px 8px;
-#         border-left: 3px solid #ccc;
-#         border-radius: 0 4px 4px 0;
-#         background-color: rgba(255, 255, 255, 0.5);
-#     }
-    
-#     /* Dark mode agent activity */
-#     [data-theme="dark"] .agent-activity {
-#         background-color: rgba(255, 255, 255, 0.05);
-#     }
-    
-#     /* Agent-specific colors */
-#     .agent-coordinator {
-#         border-left-color: #007bff;
-#         background-color: rgba(0, 123, 255, 0.1);
-#     }
-#     .agent-research {
-#         border-left-color: #28a745;
-#         background-color: rgba(40, 167, 69, 0.1);
-#     }
-#     .agent-analysis {
-#         border-left-color: #dc3545;
-#         background-color: rgba(220, 53, 69, 0.1);
-#     }
-#     .tool-call {
-#         border-left-color: #6610f2;
-#         background-color: rgba(102, 16, 242, 0.1);
-#     }
-#     .llm-call {
-#         border-left-color: #fd7e14;
-#         background-color: rgba(253, 126, 20, 0.1);
-#     }
-    
-#     /* Chat input container */
-#     .chat-input-container {
-#         position: fixed;
-#         bottom: 0;
-#         left: 0;
-#         width: 100%;
-#         padding: 16px 20px;
-#         background-color: var(--background-color, white);
-#         border-top: 2px solid var(--border-color, #e6e6e6);
-#         backdrop-filter: blur(10px);
-#         z-index: 100;
-#         box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
-#     }
-    
-#     /* Dark mode chat input */
-#     [data-theme="dark"] .chat-input-container {
-#         background-color: rgba(14, 17, 23, 0.95);
-#         border-top-color: #464649;
-#         box-shadow: 0 -4px 12px rgba(255, 255, 255, 0.1);
-#     }
-    
-#     /* Workflow monitor */
-#     .workflow-monitor {
-#         border: 1px solid var(--border-color, #dee2e6);
-#         border-radius: 10px;
-#         padding: 0.75rem;
-#         margin: 0.75rem 0;
-#         background-color: var(--secondary-background-color, #f8f9fa);
-#         font-size: 0.85rem;
-#         color: var(--text-color, #262730);
-#     }
-    
-#     /* Dark mode workflow monitor */
-#     [data-theme="dark"] .workflow-monitor {
-#         background-color: #262730;
-#         border-color: #464649;
-#         color: #fafafa;
-#     }
-    
-#     /* Button styling */
-#     .stButton>button {
-#         width: 100%;
-#         border-radius: 8px !important;
-#         font-weight: 500 !important;
-#         transition: all 0.2s ease !important;
-#     }
-    
-#     /* Citation styling */
-#     .citation {
-#         background-color: var(--secondary-background-color, #e9ecef);
-#         color: var(--text-color, #495057);
-#         border-radius: 4px;
-#         padding: 2px 6px;
-#         font-size: 0.8rem;
-#         border: 1px solid var(--border-color, #ced4da);
-#     }
-    
-#     /* Dark mode citation */
-#     [data-theme="dark"] .citation {
-#         background-color: #464649;
-#         color: #e0e0e0;
-#         border-color: #6c757d;
-#     }
-    
-#     /* Disclaimer text */
-#     .disclaimer-text {
-#         font-size: 0.8rem;
-#         color: var(--text-color-secondary, #6c757d);
-#         font-style: italic;
-#     }
-    
-#     /* Chat message container */
-#     .chat-message {
-#         width: 100%;
-#         margin: 0.75rem 0;
-#     }
-    
-#     /* Agent status container */
-#     .agent-status-container {
-#         display: flex;
-#         flex-direction: row;
-#         gap: 12px;
-#         margin-bottom: 16px;
-#     }
-    
-#     /* Agent status items */
-#     .agent-status-item {
-#         flex: 1;
-#         padding: 8px 12px;
-#         border-radius: 8px;
-#         text-align: center;
-#         font-size: 0.8rem;
-#         font-weight: 500;
-#         transition: all 0.3s ease;
-#     }
-    
-#     /* Status colors with better contrast */
-#     .status-running {
-#         background: linear-gradient(135deg, #fff3cd, #ffeaa7);
-#         border: 1px solid #ffd700;
-#         color: #856404;
-#     }
-#     .status-completed {
-#         background: linear-gradient(135deg, #d4edda, #c3e6cb);
-#         border: 1px solid #28a745;
-#         color: #155724;
-#     }
-#     .status-pending {
-#         background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-#         border: 1px solid #dee2e6;
-#         color: #6c757d;
-#     }
-#     .status-error {
-#         background: linear-gradient(135deg, #f8d7da, #f5c6cb);
-#         border: 1px solid #dc3545;
-#         color: #721c24;
-#     }
-    
-#     /* Dark mode status colors */
-#     [data-theme="dark"] .status-running {
-#         background: linear-gradient(135deg, #4a4000, #6a5700);
-#         color: #ffd700;
-#         border-color: #856404;
-#     }
-#     [data-theme="dark"] .status-completed {
-#         background: linear-gradient(135deg, #0d4625, #155724);
-#         color: #28a745;
-#         border-color: #28a745;
-#     }
-#     [data-theme="dark"] .status-pending {
-#         background: linear-gradient(135deg, #2d3748, #4a5568);
-#         color: #a0aec0;
-#         border-color: #718096;
-#     }
-#     [data-theme="dark"] .status-error {
-#         background: linear-gradient(135deg, #4a1d1d, #721c24);
-#         color: #f56565;
-#         border-color: #e53e3e;
-#     }
-    
-#     /* Scrollbar styling for webkit browsers */
-#     .activity-log::-webkit-scrollbar {
-#         width: 6px;
-#     }
-#     .activity-log::-webkit-scrollbar-track {
-#         background: var(--secondary-background-color, #f1f1f1);
-#         border-radius: 3px;
-#     }
-#     .activity-log::-webkit-scrollbar-thumb {
-#         background: var(--border-color, #888);
-#         border-radius: 3px;
-#     }
-#     .activity-log::-webkit-scrollbar-thumb:hover {
-#         background: var(--text-color-secondary, #555);
-#     }
-    
-#     /* Enhance readability */
-#     .chat-message strong {
-#         color: var(--text-color, inherit);
-#         font-weight: 600;
-#     }
-    
-#     .chat-message small {
-#         color: var(--text-color-secondary, #888);
-#         opacity: 0.8;
-#     }
-# </style>
-# """, unsafe_allow_html=True)
-
 def initialize_session_state():
     """Initialize session state variables"""
     if 'conversation_history' not in st.session_state:
@@ -352,6 +36,10 @@ def initialize_session_state():
         st.session_state.current_response = None
     if 'vector_store_initialized' not in st.session_state:
         st.session_state.vector_store_initialized = False
+    if 'llm_initialized' not in st.session_state:
+        st.session_state.llm_initialized = False
+    if 'llm_status' not in st.session_state:
+        st.session_state.llm_status = None
     if 'processing' not in st.session_state:
         st.session_state.processing = False
     if 'streaming' not in st.session_state:
@@ -469,6 +157,21 @@ def setup_vector_store():
     except Exception as e:
         return False, f"❌ Failed to initialize database: {str(e)}"
 
+@st.cache_resource
+def check_llm_health():
+    """Check if LLM API is healthy and responding (cached)"""
+    try:
+        client = LMStudioClient()
+        health_result = client.health_check()
+        
+        if health_result['status'] == 'healthy':
+            return True, f"✅ LLM API is healthy (Model: {health_result['model']})", health_result
+        else:
+            return False, f"❌ LLM API issue: {health_result['message']}", health_result
+            
+    except Exception as e:
+        return False, f"❌ Failed to check LLM health: {str(e)}", None
+
 def add_activity_log(agent: str, message: str, log_type: str = "info"):
     """Add entry to activity log with timestamps"""
     log_entry = {
@@ -549,6 +252,8 @@ def create_sidebar():
     
     # System Status
     st.sidebar.markdown("### 📊 System Status")
+    
+    # Database status
     db_status, db_message = setup_vector_store()
     if db_status:
         st.sidebar.success("🟢 Database: Ready")
@@ -556,6 +261,58 @@ def create_sidebar():
     else:
         st.sidebar.error("🔴 Database: Error")
         st.sidebar.error(db_message)
+    
+    # LLM API status
+    llm_status, llm_message, llm_details = check_llm_health()
+    if llm_status:
+        st.sidebar.success("🟢 LLM API: Ready")
+        st.session_state.llm_initialized = True
+        st.session_state.llm_status = llm_details
+        
+        # Show LLM details in expander
+        with st.sidebar.expander("🤖 LLM Details", expanded=False):
+            if llm_details:
+                st.write(f"**Model:** {llm_details.get('model', 'Unknown')}")
+                st.write(f"**Server:** {llm_details.get('base_url', 'Unknown')}")
+                st.write(f"**Status:** {llm_details.get('server_status', 'Unknown')}")
+                if llm_details.get('test_response'):
+                    st.write(f"**Test Response:** {llm_details['test_response']}")
+    else:
+        st.sidebar.error("🔴 LLM API: Error")
+        st.sidebar.error(llm_message)
+        st.session_state.llm_initialized = False
+        st.session_state.llm_status = llm_details
+        
+        # Show troubleshooting info
+        with st.sidebar.expander("🔧 Troubleshooting", expanded=True):
+            st.markdown("""
+            **Common solutions:**
+            1. Ensure LM Studio is running
+            2. Check if a model is loaded in LM Studio
+            3. Verify the server URL in settings
+            4. Check if port 1234 is available
+            """)
+            if llm_details:
+                st.write(f"**Attempted URL:** {llm_details.get('base_url', 'Unknown')}")
+                st.write(f"**Model:** {llm_details.get('model', 'Unknown')}")
+    
+    # Overall system status
+    system_ready = db_status and llm_status
+    if system_ready:
+        st.sidebar.success("🚀 **System Ready**")
+    else:
+        st.sidebar.warning("⚠️ **System Not Ready**")
+        st.sidebar.info("Please fix the issues above before using the assistant.")
+    
+    # Add refresh button for system status
+    if st.sidebar.button("🔄 Refresh System Status"):
+        # Clear the cached functions to force recheck
+        setup_vector_store.clear()
+        check_llm_health.clear()
+        st.session_state.vector_store_initialized = False
+        st.session_state.llm_initialized = False
+        st.session_state.llm_status = None
+        st.rerun()
     
     # Conversation settings
     st.sidebar.markdown("### ⚙️ Settings")
@@ -789,14 +546,49 @@ def main():
     st.title("⚖️ Legal AI Assistant")
     st.markdown("*Advanced AI-powered legal research and analysis*")
     
-    # Check if database is initialized
+    # Check if systems are initialized
     if not st.session_state.vector_store_initialized:
         db_status, db_message = setup_vector_store()
         if not db_status:
-            st.error(db_message)
+            st.error("**Database Error:** " + db_message)
+            st.info("Please check the database configuration and try refreshing the page.")
             st.stop()
         else:
             st.session_state.vector_store_initialized = True
+    
+    if not st.session_state.llm_initialized:
+        llm_status, llm_message, llm_details = check_llm_health()
+        if not llm_status:
+            st.error("**LLM API Error:** " + llm_message)
+            
+            # Show detailed error information
+            if llm_details:
+                with st.expander("🔧 Detailed Error Information", expanded=True):
+                    st.write(f"**Server URL:** {llm_details.get('base_url', 'Unknown')}")
+                    st.write(f"**Model:** {llm_details.get('model', 'Unknown')}")
+                    st.write(f"**Server Status:** {llm_details.get('server_status', 'Unknown')}")
+                    
+                    st.markdown("""
+                    ### Troubleshooting Steps:
+                    1. **Start LM Studio** - Make sure LM Studio application is running
+                    2. **Load a Model** - Ensure you have loaded a compatible model in LM Studio
+                    3. **Check Server** - Verify LM Studio server is running on the correct port (default: 1234)
+                    4. **Network Access** - Ensure no firewall is blocking the connection
+                    5. **Model Compatibility** - Make sure the model supports chat completions
+                    
+                    ### Quick Fix:
+                    - Open LM Studio
+                    - Go to the "Local Server" tab
+                    - Click "Start Server"
+                    - Load a chat-compatible model
+                    - Refresh this page
+                    """)
+            
+            st.info("The Legal AI Assistant requires both the database and LLM API to be working. Please resolve the LLM API issue and refresh the page.")
+            st.stop()
+        else:
+            st.session_state.llm_initialized = True
+            st.session_state.llm_status = llm_details
     
     # Sidebar
     settings = create_sidebar()
@@ -949,25 +741,35 @@ def main():
     # Chat input area
     st.markdown("---")
     
+    # Check if system is ready
+    system_ready = st.session_state.vector_store_initialized and st.session_state.llm_initialized
+    
     col1, col2 = st.columns([6, 1])
     
     with col1:
         query_input = st.text_input(
             "Ask your legal question:",
             key="query_input",
-            placeholder="Example: What are the requirements for a valid contract?",
-            disabled=st.session_state.processing
+            placeholder="Example: What are the requirements for a valid contract?" if system_ready else "System not ready - please check status above",
+            disabled=st.session_state.processing or not system_ready
         )
     
     with col2:
         submit_button = st.button(
             "Send" if not st.session_state.processing else "Processing...",
             key="submit", 
-            disabled=st.session_state.processing
+            disabled=st.session_state.processing or not system_ready
         )
     
+    # Show system status if not ready
+    if not system_ready:
+        if not st.session_state.vector_store_initialized:
+            st.warning("⚠️ **Database not ready** - Please check the database status in the sidebar.")
+        if not st.session_state.llm_initialized:
+            st.warning("⚠️ **LLM API not ready** - Please check the LLM status in the sidebar and ensure LM Studio is running with a model loaded.")
+    
     # Process query when submitted
-    if submit_button and query_input.strip() and not st.session_state.processing:
+    if submit_button and query_input.strip() and not st.session_state.processing and system_ready:
         process_new_query(query_input.strip())
         st.rerun()
 
